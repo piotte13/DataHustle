@@ -6,15 +6,19 @@ import PackageDescription
 let package = Package(
     name: "DataHustle",
     products: [
-        .executable(name: "DataHustle", targets: ["DataHustle"]),
+        .library(name: "Math", targets: ["Math"]),
+        .executable(name: "DataHustle", targets: ["DataHustle"])
     ],
     dependencies: [
         .package(url: "https://github.com/piotte13/SwiftRoaring",  from: "1.0.4")
     ],
     targets: [
         .target(
+            name: "Math",
+            dependencies: []),
+        .target(
             name: "DataHustle",
-            dependencies: ["SwiftRoaring"]),
+            dependencies: ["SwiftRoaring", "Math"]),
         .testTarget(
             name: "DataHustleTests",
             dependencies: ["DataHustle"]),

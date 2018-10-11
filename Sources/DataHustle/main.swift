@@ -1,117 +1,7 @@
-// import algos
 import croaring
 import Foundation
 import Dispatch
-func nanotime(block: () -> Void) -> UInt64 {
-            let t1 = DispatchTime.now()
-            block()
-            let t2 = DispatchTime.now()
-            let delay = t2.uptimeNanoseconds - t1.uptimeNanoseconds
-            return delay
-    }
-
-func max(_ values: [Double]) -> Double {
-    if let maxValue = values.max() {
-      return maxValue
-    }
-    
-    return 0
-  }
-  
-func min(_ values: [Double]) -> Double {
-    if let minValue = values.min() {
-      return minValue
-    }
-    
-    return 0
-}
-
-func sum(_ values: [Double]) -> Double {
-    return values.reduce(0, +)
-}
-
-func range(_ values1: [Double], _ values2: [Double]) -> Double{
-    var mx = max(values1)
-    var mn = min(values1)
-    if (mx < max(values2)){
-        mx = max(values2)
-    }
-    if (mn > min(values2)){
-        mn = min(values2)
-    }
-    return mx - mn
-}
-
-func sort(_ values: [Double]) -> [Double] {
-    return values.sorted { $0 < $1 }
-}
-
-func average(_ values: [Double]) -> Double? {
-    let count = Double(values.count)
-    if count == 0 { return nil }
-    return sum(values) / count
-  }
-
-func variancePopulation(_ values: [Double]) -> Double? {
-    let count = Double(values.count)
-    if count == 0 { return nil }
-    
-    if let avgerageValue = average(values) {
-      let numerator = values.reduce(0) { total, value in
-        total + pow(avgerageValue - value, 2)
-      }
-      
-      return numerator / count
-    }
-    
-    return nil
-}
-
-func standardDeviationPopulation(_ values: [Double]) -> Double? {
-    if let variancePopulation = variancePopulation(values) {
-      return sqrt(variancePopulation)
-    }
-    
-    return nil
-}
-
-func median(_ values: [Double]) -> Double? {
-    let count = Double(values.count)
-    if count == 0 { return nil }
-    let sorted = sort(values)
-    
-    if count.truncatingRemainder(dividingBy: 2) == 0 {
-      // Even number of items - return the mean of two middle values
-      let leftIndex = Int(count / 2 - 1)
-      let leftValue = sorted[leftIndex]
-      let rightValue = sorted[leftIndex + 1]
-      return (leftValue + rightValue) / 2
-    } else {
-      // Odd number of items - take the middle item.
-      return sorted[Int(count / 2)]
-    }
-}
-
-func centralMoment(_ values: [Double], order: Int) -> Double? {
-    let count = Double(values.count)
-    if count == 0 { return nil }
-    guard let averageVal = average(values) else { return nil }
-    
-    let total = values.reduce(0) { sum, value in
-      sum + pow((value - averageVal), Double(order))
-    }
-    
-    return total / count
-}
-
-func skewness(_ values: [Double]) -> Double? {
-    if values.count < 3 { return nil }
-    guard let stdDev = standardDeviationPopulation(values) else { return nil }
-    if stdDev == 0 { return nil }
-    guard let moment3 = centralMoment(values, order: 3) else { return nil }
-    
-    return moment3 / pow(stdDev, 3)
-}
+import Math
 
 func loadFolderIntoArrays(folderName: String) -> [[Int]] {
     //Load files into arrays
@@ -144,7 +34,7 @@ func writeToFile(data: String, fileName: String, append: Bool){
     let currentPath = fd.currentDirectoryPath
     let url = URL(fileURLWithPath: "\(currentPath)/Results/\(fileName).csv")
     do{
-    try fd.createDirectory(atPath: "\(currentPath)/Results/",withIntermediateDirectories: true, attributes: nil)
+    try fd.createDirectory(atPath: url.deletingLastPathComponent().relativePath,withIntermediateDirectories: true, attributes: nil)
     } catch {
         print("Error: \(error.localizedDescription)")
     }
@@ -164,70 +54,100 @@ func writeToFile(data: String, fileName: String, append: Bool){
     }
         
 }
+
+
 print("Loading data...")
 var values = loadFolderIntoArrays(folderName: "realdata")
 print("Done loading data...")
-func buildDataset(algo: (UnsafePointer<UInt16>, size_t, UnsafePointer<UInt16>, size_t) -> Int32, paramsInverted: Bool, filename: String){
+
+func buildDataset(algos: (inout [UInt16], inout [UInt16]) -> [UInt64], algoNames: String, filename: String){
     print("Building \(filename)...")
-    var dataset = "range, n1 , average1, median1, std1, n2 , average2, median2, std2, time\n"
+    var dataset = "range, n1 , average1, median1, std1, n2 , average2, median2, std2, "
+    dataset += "\(algoNames)\n"
     writeToFile(data: dataset, fileName: filename, append: false)
     for i in 0..<(values.count - 1){
         dataset = ""
+        /*************** Converting to UInt16 ***************/
+        var v1: [UInt16] = []
+        for j in 0..<values[i].count{
+            if(values[i][j] > UInt16.max){
+                v1.append(UInt16(values[i][j] >> 16))    
+            }
+            v1.append(UInt16(values[i][j] & 0xFFFF))
+        }
+        /****************************************************/ 
+        let ld1 = v1.map { Double($0) }
+        let a1 =  Math.average(ld1)!
+        let m1 =  Math.median(ld1)!
+        let s1 =  Math.standardDeviationPopulation(ld1)!
         for ii in 1..<(values.count){
             /*************** Converting to UInt16 ***************/
-            var v1: [UInt16] = []
             var v2: [UInt16] = []
-            for j in 0..<values[i].count{
-                if(values[i][j] <= UInt16.max){
-                    v1.append(UInt16(values[i][j]))
-                }
-            }
             for j in 0..<values[ii].count{
-                if(values[ii][j] <= UInt16.max){
-                    v2.append(UInt16(values[ii][j]))
+                if(values[ii][j] > UInt16.max){
+                    v2.append(UInt16(values[ii][j] >> 16))
                 }
+                v2.append(UInt16(values[ii][j] & 0xFFFF))
             }
-            /****************************************************/
-            // let l1 = UnsafeMutablePointer<UInt16>.allocate(capacity:v1.count)
-            // for j in 0..<v1.count{
-            //     l1[j] = v1[j]
-            // }
-            // let l2 = UnsafeMutablePointer<UInt16>.allocate(capacity:v2.count)
-            // for j in 0..<v2.count{
-            //     l2[j] = v2[j]
-            // }
-            let l1 = UnsafeMutablePointer<UInt16>(&v1)
-            let l2 = UnsafeMutablePointer<UInt16>(&v2)
-
-            let ld1 = v1.map { Double($0) }
+            /****************************************************/    
             let ld2 = v2.map { Double($0) }
-            if(ld1.count == 0 || ld2.count == 0){
-                continue
-            }
+            
             let rng = range(ld1, ld2)
-            let a1 =  average(ld1)!
-            let a2 =  average(ld2)!
-            let m1 =  median(ld1)!
-            let m2 =  median(ld2)!
-            let s1 =  standardDeviationPopulation(ld1)!
-            let s2 =  standardDeviationPopulation(ld2)!
-            //let sk1 = skewness(ld1)!
-            //let sk2 = skewness(ld2)!
-            var time: UInt64 = 0
-            if(paramsInverted){
-                time = nanotime(block: {_ = algo(l2, v2.count, l1, v1.count)})
-            }
-            else{
-                time = nanotime(block: {_ = algo(l1, v1.count, l2, v2.count)})
-            }
+            let a2 =  Math.average(ld2)!
+            let m2 =  Math.median(ld2)!
+            let s2 =  Math.standardDeviationPopulation(ld2)!
 
-            dataset += "\(rng), \(ld1.count), \(a1), \(m1), \(s1), \(ld2.count), \(a2), \(m2), \(s2), \(time)\n"
+            let times = algos(&v1, &v2)
+            dataset += "\(rng), \(ld1.count), \(a1), \(m1), \(s1), \(ld2.count), \(a2), \(m2), \(s2)"
+            for t in times{
+                dataset += ", \(t)"
+            }
+            dataset += "\n"
         }
         writeToFile(data: dataset, fileName: filename, append: true)
     }
 }
 
-buildDataset(algo: croaring.intersect_skewed_uint16_cardinality, paramsInverted: false, filename: "dataset_skewed_1")
-buildDataset(algo: croaring.intersect_skewed_uint16_cardinality, paramsInverted: true, filename: "dataset_skewed_2")
-buildDataset(algo: croaring.intersect_uint16_cardinality, paramsInverted: false, filename: "dataset_non_skewed")
-buildDataset(algo: croaring.intersect_vector16_cardinality, paramsInverted: false, filename: "dataset_vector")
+func runIntersectAlgos(_ v1: inout [UInt16], _ v2: inout [UInt16]) -> [UInt64] {
+    var times: [UInt64] = []
+    let minCard = min([Double(v1.count), Double(v2.count)])
+    let l1 = UnsafeMutablePointer<UInt16>(&v1)
+    let l2 = UnsafeMutablePointer<UInt16>(&v2)
+    let l3 = UnsafeMutablePointer<UInt16>.allocate(capacity: Int(minCard))
+
+    var time = nanotime(block: {_ = croaring.intersect_skewed_uint16(l1, v1.count, l2, v2.count, l3)})
+    times.append(time)
+
+    time = nanotime(block: {_ = croaring.intersect_skewed_uint16(l2, v2.count, l1, v1.count, l3)})
+    times.append(time)
+
+    time = nanotime(block: {_ = croaring.intersect_uint16(l1, v1.count, l2, v2.count, l3)})
+    times.append(time)
+
+    l3.deallocate()
+    return times
+}
+
+func runIntersectCardAlgos(_ v1: inout [UInt16], _ v2: inout [UInt16]) -> [UInt64] {
+    var times: [UInt64] = []
+    let l1 = UnsafeMutablePointer<UInt16>(&v1)
+    let l2 = UnsafeMutablePointer<UInt16>(&v2)
+
+    var time = nanotime(block: {_ = croaring.intersect_skewed_uint16_cardinality(l1, v1.count, l2, v2.count)})
+    times.append(time)
+
+    time = nanotime(block: {_ = croaring.intersect_skewed_uint16_cardinality(l2, v2.count, l1, v1.count)})
+    times.append(time)
+
+    time = nanotime(block: {_ = croaring.intersect_uint16_cardinality(l1, v1.count, l2, v2.count)})
+    times.append(time)
+
+    time = nanotime(block: {_ = croaring.intersect_vector16_cardinality(l1, v1.count, l2, v2.count)})
+    times.append(time)
+
+    return times
+}
+
+
+buildDataset(algos: runIntersectAlgos, algoNames: "skewed_1, skewed_2, non_skewed", filename: "Intersect_dataset")
+buildDataset(algos: runIntersectCardAlgos, algoNames: "skewed_1, skewed_2, non_skewed, vector", filename: "Intersect_card_dataset")
