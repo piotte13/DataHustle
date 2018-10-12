@@ -55,6 +55,28 @@ func writeToFile(data: String, fileName: String, append: Bool){
         
 }
 
+func getCPUModel() -> String {
+    // Create a Task instance
+    let task = Foundation.Process()
+
+    // Set the task parameters
+    task.launchPath = "/bin/bash"
+    task.arguments = ["-c", "cat /proc/cpuinfo | grep 'model name' | sed -n 1p | cut -d ':' -f 2 | awk '{$1=$1};1' | tr -d '\n'"]
+    
+    // Create a Pipe and make the task
+    // put all the output there
+    let pipe = Pipe()
+    task.standardOutput = pipe
+
+    // Launch the task
+    task.launch()
+    
+    // Get the data
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    let output = String(data: data, encoding: String.Encoding.utf8)
+
+    return output!
+}
 
 print("Loading data...")
 var values = loadFolderIntoArrays(folderName: "realdata")
@@ -148,6 +170,5 @@ func runIntersectCardAlgos(_ v1: inout [UInt16], _ v2: inout [UInt16]) -> [UInt6
     return times
 }
 
-
-buildDataset(algos: runIntersectAlgos, algoNames: "skewed_1, skewed_2, non_skewed", filename: "Intersect_dataset")
-buildDataset(algos: runIntersectCardAlgos, algoNames: "skewed_1, skewed_2, non_skewed, vector", filename: "Intersect_card_dataset")
+buildDataset(algos: runIntersectAlgos, algoNames: "skewed_1, skewed_2, non_skewed", filename: "\(getCPUModel())/Intersect_dataset")
+buildDataset(algos: runIntersectCardAlgos, algoNames: "skewed_1, skewed_2, non_skewed, vector", filename: "\(getCPUModel())/Intersect_card_dataset")

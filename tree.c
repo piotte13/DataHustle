@@ -7,13 +7,13 @@ int predict(float features[3]) {
     int classes[3];
         
     if (features[2] <= 56425.5) {
-        classes[0] = 2525; 
-        classes[1] = 10364; 
-        classes[2] = 16961; 
+        classes[0] = 2771; 
+        classes[1] = 7113; 
+        classes[2] = 19966; 
     } else {
-        classes[0] = 1; 
-        classes[1] = 8337; 
-        classes[2] = 1413; 
+        classes[0] = 11; 
+        classes[1] = 7639; 
+        classes[2] = 2101; 
     }
 
     int index = 0;
